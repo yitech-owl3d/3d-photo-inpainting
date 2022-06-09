@@ -262,7 +262,9 @@ def reassign_floating_island(mesh, info_on_pix, image, depth):
         for y in range(W):
             if is_inside(x, y, bord_up, bord_down, bord_left, bord_right) and not(key_exist(info_on_pix, (x, y))):
                 lost_map[x, y] = 1
-    _, label_lost_map = cv2.connectedComponents(lost_map.astype(np.uint8), connectivity=4)
+    lost_map = lost_map.astype(np.uint8)
+    # _, label_lost_map = cv2.connectedComponents(lost_map, connectivity=4)
+    _, label_lost_map = cv2.connectedComponents(lost_map)
     mask = np.zeros((H, W))
     mask[bord_up:bord_down, bord_left:bord_right] = 1
     label_lost_map = (label_lost_map * mask).astype(np.int)
@@ -761,7 +763,7 @@ def remove_dangling(mesh, edge_ccs, edge_mesh, info_on_pix, image, depth, config
             info_on_pix[(hx, hy)][0]['depth'] = new_depth
             info_on_pix[(hx, hy)][0]['disp'] = 1./new_depth
             new_node = (hx, hy, new_depth)
-            mesh = refresh_node(single_edge_node, mesh.node[single_edge_node], new_node, dict(), mesh)
+            mesh = refresh_node(single_edge_node, mesh.nodes[single_edge_node], new_node, dict(), mesh)
             edge_ccs[edge_cc_id] = set([new_node])
             for ne in largest_cc:
                 mesh.add_edge(new_node, ne)

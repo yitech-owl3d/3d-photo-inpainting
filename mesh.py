@@ -1819,6 +1819,57 @@ def DL_inpaint_edge(mesh,
     return mesh, info_on_pix, specific_mask_nodes, new_edge_ccs, connnect_points_ccs, np_image
 
 
+def convert_to_mesh(input_mesh, info_on_pix, config, ply_flag):
+    vertex_id = 0
+    node_str_point = []
+    node_str_color = []
+    node_str_list = []
+    out_fmt = lambda x, x_flag: str(x) if x_flag is True else x
+    k_00, k_02, k_11, k_12 = \
+        input_mesh.graph['cam_param_pix_inv'][0, 0], input_mesh.graph['cam_param_pix_inv'][0, 2], \
+        input_mesh.graph['cam_param_pix_inv'][1, 1], input_mesh.graph['cam_param_pix_inv'][1, 2]
+    w_offset = input_mesh.graph['woffset']
+    h_offset = input_mesh.graph['hoffset']
+    for pix_xy, pix_list in info_on_pix.items():
+        for pix_idx, pix_info in enumerate(pix_list):
+            pix_depth = pix_info['depth'] if pix_info.get('real_depth') is None else pix_info['real_depth']
+            str_pt = [out_fmt(x, ply_flag) for x in reproject_3d_int_detail(pix_xy[0], pix_xy[1], pix_depth,
+                                                                            k_00, k_02, k_11, k_12, w_offset, h_offset)]
+            if input_mesh.has_node((pix_xy[0], pix_xy[1], pix_info['depth'])) is False:
+                print("If this line pass?")
+                return False
+                continue
+            if pix_info.get('overlap_number') is not None:
+                str_color = [out_fmt(x, ply_flag) for x in
+                             (pix_info['color'] / pix_info['overlap_number']).astype(np.uint8).tolist()]
+            else:
+                str_color = [out_fmt(x, ply_flag) for x in pix_info['color'].tolist()]
+            if pix_info.get('edge_occlusion') is True:
+                str_color.append(out_fmt(4, ply_flag))
+            else:
+                if pix_info.get('inpaint_id') is None:
+                    str_color.append(out_fmt(1, ply_flag))
+                else:
+                    str_color.append(out_fmt(pix_info.get('inpaint_id') + 1, ply_flag))
+            if pix_info.get('modified_border') is True or pix_info.get('ext_pixel') is True:
+                if len(str_color) == 4:
+                    str_color[-1] = out_fmt(5, ply_flag)
+                else:
+                    str_color.append(out_fmt(5, ply_flag))
+            pix_info['cur_id'] = vertex_id
+            input_mesh.nodes[(pix_xy[0], pix_xy[1], pix_info['depth'])]['cur_id'] = out_fmt(vertex_id, ply_flag)
+            vertex_id += 1
+            if ply_flag is True:
+                node_str_list.append(' '.join(str_pt) + ' ' + ' '.join(str_color) + '\n')
+            else:
+                node_str_color.append(str_color)
+                node_str_point.append(str_pt)
+    str_faces = generate_face(input_mesh, info_on_pix, config)
+    if ply_flag:
+        return node_str_list, str_faces
+    return node_str_point, node_str_color, str_faces
+
+
 def write_ply(image,
               depth,
               int_mtx,
@@ -2021,44 +2072,10 @@ def write_ply(image,
     node_str_time = 0
     generate_face_time = 0
     point_list = []
-    k_00, k_02, k_11, k_12 = \
-        input_mesh.graph['cam_param_pix_inv'][0, 0], input_mesh.graph['cam_param_pix_inv'][0, 2], \
-        input_mesh.graph['cam_param_pix_inv'][1, 1], input_mesh.graph['cam_param_pix_inv'][1, 2]
-    w_offset = input_mesh.graph['woffset']
-    h_offset = input_mesh.graph['hoffset']
-    for pix_xy, pix_list in info_on_pix.items():
-        for pix_idx, pix_info in enumerate(pix_list):
-            pix_depth = pix_info['depth'] if pix_info.get('real_depth') is None else pix_info['real_depth']
-            str_pt = [out_fmt(x, ply_flag) for x in reproject_3d_int_detail(pix_xy[0], pix_xy[1], pix_depth,
-                      k_00, k_02, k_11, k_12, w_offset, h_offset)]
-            if input_mesh.has_node((pix_xy[0], pix_xy[1], pix_info['depth'])) is False:
-                return False
-                continue
-            if pix_info.get('overlap_number') is not None:
-                str_color = [out_fmt(x, ply_flag) for x in (pix_info['color']/pix_info['overlap_number']).astype(np.uint8).tolist()]
-            else:
-                str_color = [out_fmt(x, ply_flag) for x in pix_info['color'].tolist()]
-            if pix_info.get('edge_occlusion') is True:
-                str_color.append(out_fmt(4, ply_flag))
-            else:
-                if pix_info.get('inpaint_id') is None:
-                    str_color.append(out_fmt(1, ply_flag))
-                else:
-                    str_color.append(out_fmt(pix_info.get('inpaint_id') + 1, ply_flag))
-            if pix_info.get('modified_border') is True or pix_info.get('ext_pixel') is True:
-                if len(str_color) == 4:
-                    str_color[-1] = out_fmt(5, ply_flag)
-                else:
-                    str_color.append(out_fmt(5, ply_flag))
-            pix_info['cur_id'] = vertex_id
-            input_mesh.nodes[(pix_xy[0], pix_xy[1], pix_info['depth'])]['cur_id'] = out_fmt(vertex_id, ply_flag)
-            vertex_id += 1
-            if ply_flag is True:
-                node_str_list.append(' '.join(str_pt) + ' ' + ' '.join(str_color) + '\n')
-            else:
-                node_str_color.append(str_color)
-                node_str_point.append(str_pt)
-    str_faces = generate_face(input_mesh, info_on_pix, config)
+    if ply_flag:
+        node_str_list, str_faces = convert_to_mesh(input_mesh, info_on_pix, config, ply_flag)
+    else:
+        node_str_point, node_str_color, str_faces = convert_to_mesh(input_mesh, info_on_pix, config, ply_flag)
     if config['save_ply'] is True:
         print("Writing mesh file %s ..." % ply_name)
         with open(ply_name, 'w') as ply_fi:

@@ -22,6 +22,7 @@ from boostmonodepth_utils import run_boostmonodepth
 from MiDaS.monodepth_net import MonoDepthNet
 import MiDaS.MiDaS_utils as MiDaS_utils
 from bilateral_filtering import sparse_bilateral_filtering
+from reduction import convert_to_trimesh, write_glb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, default='argument.yml',help='Configure of post processing')
@@ -126,6 +127,10 @@ for idx in tqdm(range(len(sample_list))):
         verts, colors, faces, Height, Width, hFov, vFov = read_ply(mesh_fi)
     else:
         verts, colors, faces, Height, Width, hFov, vFov = rt_info
+
+    # tri_mesh = convert_to_trimesh(verts, faces, vertex_colors=colors[:, :3])
+    # tri_mesh.show()
+    # write_glb('mesh_sakura.glb', tri_mesh)
 
 
     print(f"Making video at {time.time()}")

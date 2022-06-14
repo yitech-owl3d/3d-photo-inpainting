@@ -1830,20 +1830,36 @@ def write_ply(image,
               depth_feat_model):
     depth = depth.astype(np.float64)
     input_mesh, xy2depth, image, depth = create_mesh(depth, image, int_mtx, config)
+    base_mesh = input_mesh.copy()
+    print("create_mesh::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
 
     H, W = input_mesh.graph['H'], input_mesh.graph['W']
     input_mesh = tear_edges(input_mesh, config['depth_threshold'], xy2depth)
+    print("tear edges::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     input_mesh, info_on_pix = generate_init_node(input_mesh, config, min_node_in_cc=200)
+    print("generate init node::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     edge_ccs, input_mesh, edge_mesh = group_edges(input_mesh, config, image, remove_conflict_ordinal=False)
+    print("group edges::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     edge_canvas = np.zeros((H, W)) - 1
 
     input_mesh, info_on_pix, depth = reassign_floating_island(input_mesh, info_on_pix, image, depth)
+    print("reassign floating island::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     input_mesh = update_status(input_mesh, info_on_pix)
+    print("update status::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     specific_edge_id = []
     edge_ccs, input_mesh, edge_mesh = group_edges(input_mesh, config, image, remove_conflict_ordinal=True)
+    print("group edges::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     pre_depth = depth.copy()
     input_mesh, info_on_pix, edge_mesh, depth, aft_mark = remove_dangling(input_mesh, edge_ccs, edge_mesh, info_on_pix, image, depth, config)
-
+    print("remove dangling::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     input_mesh, depth, info_on_pix = update_status(input_mesh, info_on_pix, depth)
     edge_ccs, input_mesh, edge_mesh = group_edges(input_mesh, config, image, remove_conflict_ordinal=True)
     edge_canvas = np.zeros((H, W)) - 1
@@ -1893,6 +1909,9 @@ def write_ply(image,
                                                 depth_edge_model, depth_feat_model, rgb_model, config, direc="left-up")
         info_on_pix, input_mesh, image, depth, edge_ccs = extrapolate(input_mesh, info_on_pix, image, depth, other_edge_with_id, edge_map, edge_ccs,
                                                 depth_edge_model, depth_feat_model, rgb_model, config, direc="left-down")
+    print("extrapolate::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
+
     specific_edge_loc = None
     specific_edge_id = []
     vis_edge_id = None
@@ -1940,12 +1959,17 @@ def write_ply(image,
                                                                                                             specific_edge_id,
                                                                                                             specific_edge_loc,
                                                                                                             inpaint_iter=0)
+
+    print("DL inpaint mesh::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     specific_edge_id = []
     edge_canvas = np.zeros((input_mesh.graph['H'], input_mesh.graph['W']))
     connect_points_ccs = [set() for _ in connect_points_ccs]
     context_ccs, mask_ccs, broken_mask_ccs, edge_ccs, erode_context_ccs, init_mask_connect, \
         edge_maps, extend_context_ccs, extend_edge_ccs, extend_erode_context_ccs = \
             context_and_holes(input_mesh, new_edge_ccs, config, specific_edge_id, specific_edge_loc, depth_feat_model, connect_points_ccs, inpaint_iter=1)
+    print("context and holes::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     mask_canvas = np.zeros((input_mesh.graph['H'], input_mesh.graph['W']))
     context_canvas = np.zeros((input_mesh.graph['H'], input_mesh.graph['W']))
     erode_context_ccs_canvas = np.zeros((input_mesh.graph['H'], input_mesh.graph['W']))
@@ -1977,6 +2001,8 @@ def write_ply(image,
                                                                                     specific_edge_id,
                                                                                     specific_edge_loc,
                                                                                     inpaint_iter=1)
+    print("DL inpaint mesh::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
     vertex_id = 0
     input_mesh.graph['H'], input_mesh.graph['W'] = input_mesh.graph['noext_H'], input_mesh.graph['noext_W']
     background_canvas = np.zeros((input_mesh.graph['H'],

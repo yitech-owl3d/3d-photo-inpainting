@@ -517,6 +517,7 @@ def enlarge_border(mesh, info_on_pix, depth, image, config):
     return mesh, info_on_pix, depth, image
 
 def fill_missing_node(mesh, info_on_pix, image, depth):
+    H, W = mesh.graph['H'], mesh.graph['W']
     for x in range(mesh.graph['bord_up'], mesh.graph['bord_down']):
         for y in range(mesh.graph['bord_left'], mesh.graph['bord_right']):
             if info_on_pix.get((x, y)) is None:
@@ -533,9 +534,10 @@ def fill_missing_node(mesh, info_on_pix, image, depth):
                     re_depth = re_depth / re_count
                 depth[x, y] = abs(re_depth)
                 info_on_pix[(x, y)] = [{'depth':re_depth,
-                                            'color':image[x, y],
-                                            'synthesis':False,
-                                            'disp':1./re_depth}]
+                                        'color':image[x, y],
+                                        'synthesis':False,
+                                        'disp':1./re_depth,
+                                        'uv': (y / W, 1 - x / H)}]
                 mesh.add_node((x, y, re_depth), color=image[x, y],
                                                 synthesis=False,
                                                 disp=1./re_depth,

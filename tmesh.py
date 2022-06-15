@@ -21,7 +21,8 @@ from utils import refine_color_around_edge, filter_irrelevant_edge_new, require_
 from utils import create_placeholder, refresh_node, find_largest_rect
 from mesh_tools import get_depth_from_maps, get_map_from_ccs, get_edge_from_nodes, get_depth_from_nodes, get_rgb_from_nodes, crop_maps_by_size, convert2tensor, recursive_add_edge, update_info, filter_edge, relabel_node, depth_inpainting
 from mesh_tools import refresh_bord_depth, enlarge_border, fill_dummy_bord, extrapolate, fill_missing_node, incomplete_node, get_valid_size, dilate_valid_size, size_operation
-from texture_impl import convert_to_texture_trimesh, write_glb
+from texture_impl import convert_to_texture_trimesh, convert_to_trimesh, write_glb
+from texture_impl import InpaintingTexture
 import transforms3d
 import random
 from functools import reduce
@@ -1980,6 +1981,7 @@ def write_ply(image,
     edge_canvas = np.zeros((H, W)) - 1
     mesh, info_on_pix, depth = fill_missing_node(input_mesh, info_on_pix, image, depth)
 
+
     if config['extrapolate_border'] is True:
         pre_depth = depth.copy()
         input_mesh, info_on_pix, depth = refresh_bord_depth(input_mesh, info_on_pix, image, depth)
@@ -2040,6 +2042,9 @@ def write_ply(image,
                                                                                             depth_feat_model,
                                                                                             inpaint_iter=0,
                                                                                             vis_edge_id=vis_edge_id)
+    print("context_and_holes::")
+    print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
+
     edge_canvas = np.zeros((H, W))
     mask = np.zeros((H, W))
     context = np.zeros((H, W))
@@ -2052,31 +2057,39 @@ def write_ply(image,
     #     for node in cc:
     #         edge_canvas[node[0], node[1]] = cc_id
     # f, ((ax0, ax1, ax2)) = plt.subplots(1, 3, sharex=True, sharey=True); ax0.imshow(1./depth); ax1.imshow(image); ax2.imshow(edge_canvas); plt.show()
-    input_mesh, info_on_pix, specific_edge_nodes, new_edge_ccs, connect_points_ccs, image = DL_inpaint_edge(input_mesh,
-                                                                                                            info_on_pix,
-                                                                                                            config,
-                                                                                                            image,
-                                                                                                            depth,
-                                                                                                            context_ccs,
-                                                                                                            erode_context_ccs,
-                                                                                                            extend_context_ccs,
-                                                                                                            extend_erode_context_ccs,
-                                                                                                            mask_ccs,
-                                                                                                            broken_mask_ccs,
-                                                                                                            edge_ccs,
-                                                                                                            extend_edge_ccs,
-                                                                                                            init_mask_connect,
-                                                                                                            edge_maps,
-                                                                                                            rgb_model,
-                                                                                                            depth_edge_model,
-                                                                                                            depth_edge_model_init,
-                                                                                                            depth_feat_model,
-                                                                                                            specific_edge_id,
-                                                                                                            specific_edge_loc,
-                                                                                                            inpaint_iter=0)
-
+    input_mesh, info_on_pix, specific_edge_nodes, new_edge_ccs, connect_points_ccs, image = DL_inpaint_edge(
+        input_mesh,
+        info_on_pix,
+        config,
+        image,
+        depth,
+        context_ccs,
+        erode_context_ccs,
+        extend_context_ccs,
+        extend_erode_context_ccs,
+        mask_ccs,
+        broken_mask_ccs,
+        edge_ccs,
+        extend_edge_ccs,
+        init_mask_connect,
+        edge_maps,
+        rgb_model,
+        depth_edge_model,
+        depth_edge_model_init,
+        depth_feat_model,
+        specific_edge_id,
+        specific_edge_loc,
+        inpaint_iter=0)
     print("DL inpaint mesh::")
     print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
+    # node_str_point, node_str_color, node_str_uv, str_faces = convert_to_texture_mesh(input_mesh, info_on_pix, config, False)
+
+    # m = convert_to_trimesh(np.asarray(node_str_point), np.asarray(str_faces), np.asarray(node_str_color)[:, :3])
+    # m.show()
+    node_str_point, node_str_color, str_faces = convert_to_mesh(input_mesh, info_on_pix, config, False)
+    m = convert_to_trimesh(np.asarray(node_str_point), np.asarray(str_faces), np.asarray(node_str_color)[:, :3])
+    m.show()
+
     specific_edge_id = []
     edge_canvas = np.zeros((input_mesh.graph['H'], input_mesh.graph['W']))
     connect_points_ccs = [set() for _ in connect_points_ccs]
@@ -2118,6 +2131,10 @@ def write_ply(image,
                                                                                     inpaint_iter=1)
     print("DL inpaint mesh::")
     print(f"Base mesh : {base_mesh}, mesh : {input_mesh}")
+    # texture.write('texture_1.png')
+    node_str_point, node_str_color, str_faces = convert_to_mesh(input_mesh, info_on_pix, config, False)
+    m = convert_to_trimesh(np.asarray(node_str_point), np.asarray(str_faces), np.asarray(node_str_color)[:, :3])
+    m.show()
     vertex_id = 0
     input_mesh.graph['H'], input_mesh.graph['W'] = input_mesh.graph['noext_H'], input_mesh.graph['noext_W']
     background_canvas = np.zeros((input_mesh.graph['H'],

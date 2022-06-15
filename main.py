@@ -9,7 +9,7 @@ from tqdm import tqdm
 import yaml
 import time
 import sys
-from mesh import write_ply, read_ply, output_3d_photo
+from tmesh import write_ply, read_ply, output_3d_photo
 from utils import get_MiDaS_samples, read_MiDaS_depth
 import torch
 import cv2
@@ -22,7 +22,7 @@ from boostmonodepth_utils import run_boostmonodepth
 from MiDaS.monodepth_net import MonoDepthNet
 import MiDaS.MiDaS_utils as MiDaS_utils
 from bilateral_filtering import sparse_bilateral_filtering
-from reduction import convert_to_trimesh, write_glb
+from texture_impl import convert_to_trimesh, write_glb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, default='argument.yml',help='Configure of post processing')
@@ -128,9 +128,9 @@ for idx in tqdm(range(len(sample_list))):
     else:
         verts, colors, faces, Height, Width, hFov, vFov = rt_info
 
-    # tri_mesh = convert_to_trimesh(verts, faces, vertex_colors=colors[:, :3])
-    # tri_mesh.show()
-    # write_glb('mesh_sakura.glb', tri_mesh)
+    tri_mesh = convert_to_trimesh(verts, faces, vertex_colors=colors[:, :3])
+    tri_mesh.show()
+    write_glb('mesh_sakura.glb', tri_mesh)
 
 
     print(f"Making video at {time.time()}")
